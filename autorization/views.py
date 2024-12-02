@@ -6,7 +6,14 @@ import random
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
-
+from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework import status
+from .models import ClientUser
+from .serializers import ClientUserSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
 
 
 
@@ -61,13 +68,6 @@ def generate_unique_referral_code():
 
 
 
-from rest_framework.response import Response
-from rest_framework.decorators import api_view
-from rest_framework import status
-from .models import ClientUser
-from .serializers import ClientUserSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import get_user_model
 
 @api_view(['POST'])
 @permission_classes([AllowAny]) 
@@ -96,9 +96,19 @@ def verify_code_and_login(request):
     })
 
 @api_view(['POST'])
+
 def input_referral_code(request):
     referral_code = request.data.get('referral_code')
-    phone_number = request.data.get('phone_number')  # Передаем phone_number для привязки ClientUser
+
+    # Получаем phone_number из JWT токена
+    try:
+        # Извлекаем токен из заголовков запроса
+        token = AccessToken(request.headers["Authorization"].split()[1])  # Считываем токен из заголовка
+        phone_number = token.get("phone_number")  # Получаем phone_number из токена
+    except KeyError:
+        return Response({'error': 'Номер телефона не найден в токене'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({'error': f'Ошибка извлечения информации: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
     if not referral_code:
         return Response({'error': 'Реферальный код обязателен'}, status=status.HTTP_400_BAD_REQUEST)
