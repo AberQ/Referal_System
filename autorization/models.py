@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
-class CustomUserManager(BaseUserManager):
+class CustomUserManagerForAdmin(BaseUserManager):
 
 
     def create_superuser(self, email, password=None, **extra_fields):
@@ -28,7 +28,7 @@ class CustomUserManager(BaseUserManager):
         return user
 
 
-class CustomAbstractUser(AbstractBaseUser, PermissionsMixin):
+class CustomAbstractUserForAdmin(AbstractBaseUser, PermissionsMixin):
     """
     An abstract base class implementing a fully featured User model with
     admin-compliant permissions.
@@ -52,7 +52,7 @@ class CustomAbstractUser(AbstractBaseUser, PermissionsMixin):
     )
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
 
-    objects = CustomUserManager()
+    objects = CustomUserManagerForAdmin()
     USERNAME_FIELD = "email"  
     REQUIRED_FIELDS = []
 
@@ -66,7 +66,7 @@ class CustomAbstractUser(AbstractBaseUser, PermissionsMixin):
         send_mail(subject, message, from_email, [self.email], **kwargs)
 
 
-class CustomUser(CustomAbstractUser):
+class Admin(CustomAbstractUserForAdmin):
     """
     Users within the Django authentication system are represented by this
     model.
@@ -74,6 +74,6 @@ class CustomUser(CustomAbstractUser):
     Username and password are required. Other fields are optional.
     """
 
-    class Meta(CustomAbstractUser.Meta):
+    class Meta(CustomAbstractUserForAdmin.Meta):
         swappable = "AUTH_USER_MODEL"
 
