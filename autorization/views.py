@@ -1,10 +1,18 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from .models import ClientUser
-from .serializers import ClientUserSerializer
+from .serializers import *
 import random
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+
+
+
+
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny]) 
 def input_phone_number(request):
@@ -75,14 +83,17 @@ def verify_code_and_login(request):
     except ClientUser.DoesNotExist:
         return Response({'error': 'Неверный код подтверждения'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Если код правильный, создаем токен
+    # Используем кастомный сериализатор для генерации токенов
     refresh = RefreshToken.for_user(user)
+    access_token = refresh.access_token
+
+    # Добавляем phone_number в payload токена
+    access_token['phone_number'] = user.phone_number
 
     return Response({
-        'access': str(refresh.access_token),
+        'access': str(access_token),
         'refresh': str(refresh),
     })
-
 
 @api_view(['POST'])
 def input_referral_code(request):
