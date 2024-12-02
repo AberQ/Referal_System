@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view
 from .models import ClientUser
 from .serializers import ClientUserSerializer
 import random
-
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 @api_view(['POST'])
 def input_phone_number(request):
     phone_number = request.data.get('phone_number')
@@ -47,3 +47,35 @@ def generate_unique_referral_code():
         # Проверяем, существует ли уже такой код в базе данных
         if not ClientUser.objects.filter(referral_code=referral_code).exists():
             return referral_code
+
+
+
+
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework import status
+from .models import ClientUser
+from .serializers import ClientUserSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
+
+@api_view(['POST'])
+def verify_code_and_login(request):
+    verification_code = request.data.get('verification_code')
+
+    if not verification_code:
+        return Response({'error': 'Код подтверждения обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Пытаемся найти пользователя с данным verification_code
+        user = ClientUser.objects.get(verification_code=verification_code)
+    except ClientUser.DoesNotExist:
+        return Response({'error': 'Неверный код подтверждения'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Если код правильный, создаем токен
+    refresh = RefreshToken.for_user(user)
+
+    return Response({
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+    })
