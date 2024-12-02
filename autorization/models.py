@@ -29,24 +29,11 @@ class CustomUserManager(CustomBaseUserManager):
         confirmation_code = f"{randint(1000, 9999)}"
         extra_fields.setdefault("confirmation_code", confirmation_code)
 
-        user = self.model(phone_number=phone_number, **extra_fields)
+        # Создаем пользователя с confirmation_code
+        user = self.model(phone_number=phone_number, confirmation_code=confirmation_code, **extra_fields)
         user.set_password(password)
-        user.save(using=self._db)
-        return user
+        user.save(using=self._db)  # Сохраняем пользователя с кодом подтверждения
 
-    def create_superuser(self, phone_number, password=None, **extra_fields):
-        extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_superuser", True)
-
-        if extra_fields.get("is_staff") is not True:
-            raise ValueError("Суперпользователь должен иметь is_staff=True.")
-        if extra_fields.get("is_superuser") is not True:
-            raise ValueError("Суперпользователь должен иметь is_superuser=True.")
-
-        phone_number = self.normalize_phone_number(phone_number)
-        user = self.model(phone_number=phone_number, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
         return user
 
 
