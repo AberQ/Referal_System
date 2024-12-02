@@ -9,14 +9,7 @@ from django.utils.translation import gettext_lazy as _
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError("Пользователь должен указать адрес электронной почты.")
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
+
 
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
@@ -64,8 +57,8 @@ class CustomAbstractUser(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     class Meta:
-        verbose_name = _("Авторизационник")
-        verbose_name_plural = _("Авторизационники")
+        verbose_name = _("Админ")
+        verbose_name_plural = _("Админы")
         abstract = True
 
     def email_user(self, subject, message, from_email=None, **kwargs):
