@@ -208,6 +208,7 @@ class ClientUser(CustomAbstractBaseUser_Clients):
     is_active = models.BooleanField(_("активен"), default=True)
     date_joined = models.DateTimeField(_("дата регистрации"), default=timezone.now)
     verification_code = models.CharField(_("код подтверждения"), max_length=4, null=True, blank=True)
+    referral_code = models.CharField(_("реферальный код"), max_length=6, null=True, blank=True, unique=True)  
     objects = CustomUserManagerForClients()
 
     USERNAME_FIELD = "phone_number"  # Номер телефона будет использоваться для входа
@@ -219,8 +220,20 @@ class ClientUser(CustomAbstractBaseUser_Clients):
 
     def __str__(self):
         return self.phone_number
+    
+    def generate_unique_referral_code(self):
+        """Генерирует уникальный 6-значный реферальный код."""
+        while True:
+            # Генерируем случайный 6-значный код
+            referral_code = str(random.randint(100000, 999999))
+
+            # Проверяем, существует ли уже такой код в базе данных
+            if not ClientUser.objects.filter(referral_code=referral_code).exists():
+                return referral_code
     def save(self, *args, **kwargs):
         # Если код не был задан вручную, сгенерировать новый
         if not self.verification_code:
             self.verification_code = str(random.randint(1000, 9999))
-        super().save(*args, **kwargs)  # Вызов стандартного метода save()
+        if not self.referral_code:
+            self.referral_code = str(random.randint(100000, 999999))  
+        super().save(*args, **kwargs)  
