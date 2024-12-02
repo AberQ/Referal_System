@@ -1,10 +1,12 @@
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from .models import ClientUser
 from .serializers import ClientUserSerializer
 import random
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework.permissions import AllowAny
 @api_view(['POST'])
+@permission_classes([AllowAny]) 
 def input_phone_number(request):
     phone_number = request.data.get('phone_number')
 
@@ -60,6 +62,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
 @api_view(['POST'])
+@permission_classes([AllowAny]) 
 def verify_code_and_login(request):
     verification_code = request.data.get('verification_code')
 
@@ -79,3 +82,27 @@ def verify_code_and_login(request):
         'access': str(refresh.access_token),
         'refresh': str(refresh),
     })
+
+
+@api_view(['POST'])
+def input_referral_code(request):
+    referral_code = request.data.get('referral_code')
+    user = request.user  # Текущий авторизованный пользователь (предполагается, что пользователь уже авторизован)
+
+    if not referral_code:
+        return Response({'error': 'Реферальный код обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Проверяем, существует ли пользователь с таким реферальным кодом
+        referred_by_user = ClientUser.objects.get(referral_code=referral_code)
+        
+        # Связываем текущего пользователя с реферером
+        user.referred_by = referred_by_user
+        user.save()
+
+        # Возвращаем данные о текущем пользователе (включая реферера)
+        serializer = ClientUserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except ClientUser.DoesNotExist:
+        return Response({'error': 'Неверный реферальный код'}, status=status.HTTP_400_BAD_REQUEST)
