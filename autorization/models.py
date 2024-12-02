@@ -1,9 +1,11 @@
+from random import randint
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
 
 class CustomBaseUserManager(models.Manager):
     @classmethod
@@ -15,12 +17,18 @@ class CustomBaseUserManager(models.Manager):
 
     def get_by_natural_key(self, phone_number):
         return self.get(**{self.model.USERNAME_FIELD: phone_number})
-    
+
+
 class CustomUserManager(CustomBaseUserManager):
     def create_user(self, phone_number, password=None, **extra_fields):
         if not phone_number:
             raise ValueError("Пользователь должен указать номер телефона.")
         phone_number = self.normalize_phone_number(phone_number)
+        
+        # Генерация 4-значного кода
+        confirmation_code = f"{randint(1000, 9999)}"
+        extra_fields.setdefault("confirmation_code", confirmation_code)
+
         user = self.model(phone_number=phone_number, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
@@ -70,7 +78,7 @@ class CustomAbstractUser(AbstractBaseUser, PermissionsMixin):
 
     objects = CustomUserManager()
 
-    USERNAME_FIELD = "phone_number"  
+    USERNAME_FIELD = "phone_number"
     REQUIRED_FIELDS = []
 
     class Meta:
@@ -87,6 +95,13 @@ class CustomUser(CustomAbstractUser):
     """
     Пользователи внутри системы аутентификации Django представлены этой моделью.
     """
+    confirmation_code = models.CharField(
+        _("код подтверждения"),
+        max_length=4,
+        blank=True,
+        null=True,
+        help_text=_("4-значный код подтверждения для регистрации."),
+    )
 
     class Meta(CustomAbstractUser.Meta):
         swappable = "AUTH_USER_MODEL"
