@@ -7,7 +7,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 import unicodedata
-
+import random
 from django.conf import settings
 from django.contrib.auth import password_validation
 from django.contrib.auth.hashers import (
@@ -193,7 +193,7 @@ class CustomUserManagerForClients(BaseUserManager):
     def create_user(self, phone_number, **extra_fields):
         if not phone_number:
             raise ValueError(_("Номер телефона обязателен"))
-        
+        verification_code = str(random.randint(1000, 9999))
         user = self.model(phone_number=phone_number, **extra_fields)
         user.save(using=self._db)
         return user
@@ -207,7 +207,7 @@ class ClientUser(CustomAbstractBaseUser_Clients):
     phone_number = models.CharField(_("номер телефона"), max_length=15, unique=True)
     is_active = models.BooleanField(_("активен"), default=True)
     date_joined = models.DateTimeField(_("дата регистрации"), default=timezone.now)
-
+    verification_code = models.CharField(_("код подтверждения"), max_length=4, null=True, blank=True)
     objects = CustomUserManagerForClients()
 
     USERNAME_FIELD = "phone_number"  # Номер телефона будет использоваться для входа
@@ -219,3 +219,8 @@ class ClientUser(CustomAbstractBaseUser_Clients):
 
     def __str__(self):
         return self.phone_number
+    def save(self, *args, **kwargs):
+        # Если код не был задан вручную, сгенерировать новый
+        if not self.verification_code:
+            self.verification_code = str(random.randint(1000, 9999))
+        super().save(*args, **kwargs)  # Вызов стандартного метода save()
