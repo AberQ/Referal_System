@@ -5,4 +5,4 @@ from rest_framework import serializers
 class ClientUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClientUser
-        fields = ['phone_number', 'verification_code', 'referral_code']
+        fields = ['id','phone_number', 'verification_code', 'referral_code', 'referred_by_id', ]
