@@ -208,7 +208,16 @@ class ClientUser(CustomAbstractBaseUser_Clients):
     is_active = models.BooleanField(_("активен"), default=True)
     date_joined = models.DateTimeField(_("дата регистрации"), default=timezone.now)
     verification_code = models.CharField(_("код подтверждения"), max_length=4, null=True, blank=True)
-    referral_code = models.CharField(_("реферальный код"), max_length=6, null=True, blank=True, unique=True)  
+    referral_code = models.CharField(_("реферальный код"), max_length=6, null=True, blank=True, unique=True)
+    
+    # Новые поля
+    referred_by = models.ForeignKey(
+        'self', null=True, blank=True, related_name='referrals', on_delete=models.SET_NULL
+    )
+    referred_clients = models.ForeignKey(
+        'self', null=True, blank=True, related_name='referrer', on_delete=models.SET_NULL
+    )
+
     objects = CustomUserManagerForClients()
 
     USERNAME_FIELD = "phone_number"  # Номер телефона будет использоваться для входа
@@ -230,10 +239,17 @@ class ClientUser(CustomAbstractBaseUser_Clients):
             # Проверяем, существует ли уже такой код в базе данных
             if not ClientUser.objects.filter(referral_code=referral_code).exists():
                 return referral_code
+
     def save(self, *args, **kwargs):
         # Если код не был задан вручную, сгенерировать новый
         if not self.verification_code:
             self.verification_code = str(random.randint(1000, 9999))
         if not self.referral_code:
             self.referral_code = str(random.randint(100000, 999999))  
-        super().save(*args, **kwargs)  
+        super().save(*args, **kwargs)
+        
+        # Если у клиента есть реферальный код, то он может иметь реферала
+        if self.referred_by:
+            # Добавляем этот клиент в список рефералов клиента, который его привел
+            self.referred_by.referred_clients.add(self)
+            self.referred_by.save()
