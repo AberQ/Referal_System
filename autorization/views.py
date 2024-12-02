@@ -5,7 +5,7 @@ from .serializers import ClientUserSerializer
 import random
 
 @api_view(['POST'])
-def get_verification_code(request):
+def input_phone_number(request):
     phone_number = request.data.get('phone_number')
 
     if not phone_number:
