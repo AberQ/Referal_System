@@ -95,3 +95,36 @@ def verify_code_and_login(request):
         'refresh': str(refresh),
     })
 
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def refer_user(request):
+    phone_number = request.data.get('phone_number')
+    referral_code = request.data.get('referral_code')
+
+    if not phone_number or not referral_code:
+        return Response({'error': 'Номер телефона и реферальный код обязательны'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Найти пользователя по номеру телефона
+        user = ClientUser.objects.get(phone_number=phone_number)
+    except ClientUser.DoesNotExist:
+        return Response({'error': 'Пользователь с таким номером телефона не существует'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        # Найти пользователя по реферальному коду
+        referrer = ClientUser.objects.get(referral_code=referral_code)
+    except ClientUser.DoesNotExist:
+        return Response({'error': 'Реферальный код не существует'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Проверяем, чтобы пользователь не указал себя как реферала
+    if user == referrer:
+        return Response({'error': 'Нельзя указать себя как реферала'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Обновляем поле `referred_by`
+    user.referred_by = referrer
+    user.save()
+
+    # Сериализуем и возвращаем данные пользователя
+    serializer = ClientUserSerializer(user)
+    return Response(serializer.data, status=status.HTTP_200_OK)
