@@ -111,6 +111,10 @@ def refer_user(request):
     except ClientUser.DoesNotExist:
         return Response({'error': 'Пользователь с таким номером телефона не существует'}, status=status.HTTP_404_NOT_FOUND)
 
+    # Проверяем, что у пользователя еще нет реферального кода
+    if user.referred_by is not None:
+        return Response({'error': 'Этот пользователь уже зарегистрирован как реферал'}, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         # Найти пользователя по реферальному коду
         referrer = ClientUser.objects.get(referral_code=referral_code)
