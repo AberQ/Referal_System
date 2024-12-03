@@ -7,6 +7,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 import unicodedata
+from django.core.exceptions import ValidationError
+
 import random
 from django.conf import settings
 from django.contrib.auth import password_validation
@@ -200,10 +202,6 @@ class CustomUserManagerForClients(BaseUserManager):
     
 
 class ClientUser(CustomAbstractBaseUser_Clients):
-    """
-    Модель для обычных пользователей, использующих номер телефона для аутентификации.
-    """
-
     phone_number = models.CharField(_("номер телефона"), max_length=15, unique=True)
     is_active = models.BooleanField(_("активен"), default=True)
     date_joined = models.DateTimeField(_("дата регистрации"), default=timezone.now)
@@ -211,7 +209,11 @@ class ClientUser(CustomAbstractBaseUser_Clients):
     referral_code = models.CharField(_("реферальный код"), max_length=6, null=True, blank=True, unique=True)
 
     referred_by = models.ForeignKey(
-        'self', null=True, blank=True, related_name='referrals', on_delete=models.SET_NULL
+        'self', 
+        null=True, 
+        blank=True, 
+        related_name='referrals', 
+        on_delete=models.SET_NULL
     )
 
     objects = CustomUserManagerForClients()
@@ -233,9 +235,23 @@ class ClientUser(CustomAbstractBaseUser_Clients):
             if not ClientUser.objects.filter(referral_code=referral_code).exists():
                 return referral_code
 
+    def clean(self):
+        """
+        Добавляем проверки для поля `referred_by`:
+        - Пользователь не может указать себя как пригласившего.
+        - Один пользователь может быть приглашен только одним другим пользователем.
+        """
+        super().clean()
+
+        # Проверка: пользователь не может указать себя как пригласившего
+        if self.referred_by and self.referred_by == self:
+            raise ValidationError(_("Пользователь не может быть указан как пригласивший сам себя."))
+
+        # Проверка: уже существует пользователь, который указал данный `referral_code`
+        if self.referred_by and ClientUser.objects.filter(referred_by=self).exists():
+            raise ValidationError(_("Пользователь уже имеет пригласившего. Нельзя указать несколько."))
+
     def save(self, *args, **kwargs):
-        if not self.verification_code:
-            self.verification_code = str(random.randint(1000, 9999))
-        if not self.referral_code:
-            self.referral_code = self.generate_unique_referral_code()
+        # Дополнительная проверка на уровне сохранения
+        self.clean()
         super().save(*args, **kwargs)
